@@ -1,95 +1,66 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useEffect, useRef } from 'react';
+import PSPDFKit from "pspdfkit";
+import { AiFinding, HighlightingUtils } from "./highlight-utils";
+import { AI_FINDING_MOCK } from "./mock";
 
-export default function Home() {
+const App: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  let instance: any = null;
+  let objectUrl = "";
+
+  // Function to load PSPDFKit instance
+  const load = async (document: string) => {
+    console.log(`Loading ${document}...`);
+    try {
+      instance = await PSPDFKit.load({
+        document,
+        container: containerRef.current,
+        baseUrl: `${window.location.protocol}//${window.location.host}/`,
+        disableWebAssemblyStreaming: true,
+        anonymousComments: false,
+      });
+
+      // Call the HighlightingUtils function after instance is loaded
+      await HighlightingUtils.handleHighlightingAndComments_TEST(
+        instance,
+        AI_FINDING_MOCK as unknown as AiFinding[]
+      );
+    } catch (error) {
+      console.error("Failed to load PSPDFKit instance:", error);
+    }
+  };
+
+  // Handle file change event
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length > 0) {
+      PSPDFKit.unload(containerRef.current!);
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+
+      objectUrl = URL.createObjectURL(event.target.files[0]);
+      await load(objectUrl);
+    }
+  };
+
+  useEffect(() => {
+    // Load initial document on mount
+    load("/example_2.pdf");
+
+    return () => {
+      // Cleanup PSPDFKit instance on unmount
+      PSPDFKit.unload(containerRef.current!);
+    };
+  }, []);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+    <>
+      <input type="file" className="chooseFile" onChange={handleFileChange} />
+      <div ref={containerRef} className="container" style={{ height: '100vh' }}></div>
+    </>
   );
-}
+};
+
+export default App;
